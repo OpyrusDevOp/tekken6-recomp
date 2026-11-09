@@ -142,6 +142,22 @@ RX 580 2048SP and Mesa RADV 25.2.8. Follow-up player checks also reported steady
 These are player observations, not repeated benchmarks. Snow/Manji Valley and
 other remaining stages still need follow-up checks.
 
+Presentation has now been checked with both X11/XWayland and native Wayland on
+the RX 580 under GNOME. The native Wayland check confirmed swapchain creation;
+it was not a full visual or gameplay validation. A player also reported working
+video in windowed and fullscreen modes at 60 FPS with FIFO on CachyOS, KDE Plasma
+6.8.2 Wayland, an RTX 5080 Laptop GPU and NVIDIA 615.78.08 after fixing RenderDoc
+detection.
+
+The RenderDoc fix prevents an installed but inactive RenderDoc from being loaded
+automatically. Previously, this could activate a RenderDoc Vulkan layer built
+without Wayland support, leaving the guest running with no video or swapchain.
+RenderDoc still connects when already loaded by a capture session. Presentation
+startup diagnostics now identify missing native surfaces, unavailable drawable
+sizes and missing presentation queues; show/expose events also retry transient
+surface connection failures. These changes require rebuilding from current
+source; the original v0.4-Beta builder pins an older revision.
+
 Scenario Campaign initially showed characters over a black stage and nearly
 stalled. A separate 60 Hz guest clock restored scenery; direct Linux mapping
 queries reduced CPU time spent parsing `/proc/self/maps` under the runtime
@@ -157,7 +173,18 @@ also fixes busy polling during fractional-millisecond POSIX waits.
 
 Vulkan framebuffer rendering is the default. `--fsi` requires fragment shader
 interlock; it selected llvmpipe software rendering on the test GPU and is not
-validated there as a hardware alternative. `--res 768x432`, `--offscreen 512`,
+validated there as a hardware alternative. A player reported intermittent
+character texture corruption with the framebuffer path on NVIDIA; `--fsi` on
+NVIDIA and the framebuffer path on the Intel Arrow Lake iGPU looked correct in
+their tests. The corruption remains unresolved; NVIDIA users seeing it can try
+`tools/run_linux.sh --fsi --log` on hardware supporting fragment shader interlock.
+
+For a blank window, run `tools/run_linux.sh --log` and retain the startup log
+under `logs/`. To compare X11/XWayland with native Wayland, use
+`tools/run_linux.sh --log -- --video_driver=x11` or
+`tools/run_linux.sh --log -- --video_driver=wayland`.
+
+`--res 768x432`, `--offscreen 512`,
 `--fullscreen` and `--log` are available. Arguments after `--` go directly to
 the runtime. F3 toggles FPS; controls match the table below and game controllers
 use SDL3. The player name follows the Linux account username, within the guest
