@@ -16,6 +16,9 @@ storage name and XUID stay unchanged so existing saves remain accessible.
 Presentation startup logs identify the SDL native surface, unavailable drawable
 sizes, unusable swapchain extents and missing presentation queues. SDL show/expose
 events retry transient connection failures even if the pixel size is unchanged.
+Linux RenderDoc detection connects only when RenderDoc is already loaded; merely
+installing RenderDoc must not inject its Vulkan layer or affect available window
+surface extensions.
 For a blank Linux window, rebuild with `tools/build_linux.sh --jobs 6` (reuse the
 existing extracted game), then run `tools/run_linux.sh --fullscreen --log`.
 Keep the startup log through the first swapchain message or connection failure.

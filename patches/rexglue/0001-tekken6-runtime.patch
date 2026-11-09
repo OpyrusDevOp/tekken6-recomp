@@ -12643,6 +12643,47 @@ index 7360ed98ba3fa923789f4035c1e7a7c10bfdb2c1..17e78dceb0a3ae68d469c17b4ac5c475
            surface_paint_connection_state_ =
                SurfacePaintConnectionState::kUnconnectedSurfaceReportedUnusable;
            break;
+diff --git a/src/ui/renderdoc_api.cpp b/src/ui/renderdoc_api.cpp
+index e1a5287caf287bcca3b73212149ba897a37aad43..1140b52d4398be9d0fa52c977c677c415ca5b0c1 100644
+--- a/src/ui/renderdoc_api.cpp
++++ b/src/ui/renderdoc_api.cpp
+@@ -12,6 +12,10 @@
+ #include <rex/logging.h>
+ #include <rex/ui/renderdoc_api.h>
+ 
++#if REX_PLATFORM_LINUX
++#include <dlfcn.h>
++#endif
++
+ namespace rex {
+ namespace ui {
+ 
+@@ -25,10 +29,21 @@ std::unique_ptr<RenderDocAPI> RenderDocAPI::CreateIfConnected() {
+ 
+   pRENDERDOC_GetAPI get_api = nullptr;
+ 
+-  // Try to load the RenderDoc library. If RenderDoc is attached, the library
+-  // should already be loaded into the process and this will increment the
+-  // reference count. If not attached, the load will fail and we return nullptr.
+-  if (!renderdoc_api->library_.Load(platform::lib_names::kRenderDoc)) {
++  // Connect only to an existing RenderDoc injection. Loading an installed but
++  // inactive RenderDoc here can enable its Vulkan layer and hide WSI extensions
++  // (notably Wayland in RenderDoc builds without Wayland support).
++#if REX_PLATFORM_LINUX
++  void* connected_library = dlopen(platform::lib_names::kRenderDoc, RTLD_NOW | RTLD_NOLOAD);
++  if (!connected_library) {
++    return nullptr;
++  }
++#endif
++  bool library_loaded = renderdoc_api->library_.Load(platform::lib_names::kRenderDoc);
++#if REX_PLATFORM_LINUX
++  // Keep the probe's reference until DynamicLibrary has acquired its own.
++  dlclose(connected_library);
++#endif
++  if (!library_loaded) {
+     return nullptr;
+   }
+   get_api = renderdoc_api->library_.GetSymbol<pRENDERDOC_GetAPI>("RENDERDOC_GetAPI");
 diff --git a/src/ui/rex_app.cpp b/src/ui/rex_app.cpp
 index b94fe9e4814b7e66305d3b983732aebdfb0bced4..020fb58d412109dda15d48a527ef9fcf5b913412 100644
 --- a/src/ui/rex_app.cpp
